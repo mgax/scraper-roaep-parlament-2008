@@ -35,11 +35,21 @@ class Client:
             print('cache miss', url)
             resp = requests.get(URL_PREFIX + url)
             cache.save(resp.json())
-        print(cache.data)
+        return cache.data
+
+class VoteScraper:
+
+    def __init__(self, client):
+        self.client = client
+
+    def run(self):
+        chambers_url = 'aep_data.php?name=v1_parl_TipVoturi&parameter=248'
+        for chamber in self.client.get(chambers_url):
+            print(chamber['Id'])
+            break
 
 def main():
-    c = Client()
-    c.get('aep_data.php?name=v1_parl_TipVoturi&parameter=248')
+    VoteScraper(Client()).run()
 
 if __name__ == '__main__':
     main()
