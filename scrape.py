@@ -1,7 +1,9 @@
+import sys
 from urllib.parse import quote
 from hashlib import sha1
 from pathlib import Path
 import json
+import csv
 import requests
 
 URL_PREFIX = 'http://alegeri.roaep.ro/wp-content/plugins/aep/'
@@ -75,8 +77,20 @@ class VoteScraper:
                         }
 
 def main():
+    fields = [
+        'county_name',
+        'county_code',
+        'college_code',
+        'college_id',
+        'party',
+        'candidate',
+        'votes',
+        'percent',
+    ]
+    out = csv.DictWriter(sys.stdout, fields)
+    out.writeheader()
     for row in VoteScraper(Client()).run():
-        print(row)
+        out.writerow(row)
 
 if __name__ == '__main__':
     main()
