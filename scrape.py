@@ -52,28 +52,34 @@ class VoteScraper:
     def __init__(self, client):
         self.client = client
 
+    def run_college(self, county_code, college):
+        college_code = college['CodColegiu']
+        college_id = college['Id']
+        results_url = self.RESULTS_URL.format(
+            county_code, college_code)
+        for result in self.client.get(results_url):
+            yield {
+                'county_code': county_code,
+                'college_id': college_id,
+                'college_code': college_code,
+                'party': result['DenumireScurta'],
+                'candidate': result['Candidat'],
+                'votes': result['Voturi'],
+                'percent': result['Procent'],
+            }
+
+    def run_county(self, county):
+        county_code = county['COD_JUD']
+        county_name = county['DEN_JUD']
+        colegii_url = self.COLEGII_URL.format(county_code)
+        for college in self.client.get(colegii_url):
+            for row in self.run_college(county_code, college):
+                yield dict(row, county_name=county_name)
+
     def run(self):
         for chamber in self.client.get(self.CHAMBERS_URL):
             for county in self.client.get(self.COUNTIES_URL):
-                county_code = county['COD_JUD']
-                county_name = county['DEN_JUD']
-                colegii_url = self.COLEGII_URL.format(county_code)
-                for college in self.client.get(colegii_url):
-                    college_code = college['CodColegiu']
-                    college_id = college['Id']
-                    results_url = self.RESULTS_URL.format(
-                        county_code, college_code)
-                    for result in self.client.get(results_url):
-                        yield {
-                            'county_name': county_name,
-                            'county_code': county_code,
-                            'college_id': college_id,
-                            'college_code': college_code,
-                            'party': result['DenumireScurta'],
-                            'candidate': result['Candidat'],
-                            'votes': result['Voturi'],
-                            'percent': result['Procent'],
-                        }
+                yield from self.run_county(county)
 
 def main():
     fields = [
