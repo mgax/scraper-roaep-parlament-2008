@@ -1,4 +1,3 @@
-import sys
 from urllib.parse import quote
 from hashlib import sha1
 from pathlib import Path
@@ -8,6 +7,23 @@ import requests
 
 URL_PREFIX = 'http://alegeri.roaep.ro/wp-content/plugins/aep/'
 CACHE_ROOT = Path(__file__).resolve().parent / 'cache'
+OUT_ROOT = Path(__file__).resolve().parent / 'out'
+
+CHAMBERS = [
+    {'name': 'senat', 'code': 'S', 'id': 5},
+    {'name': 'cdep', 'code': 'CD', 'id': 6},
+]
+
+CSV_FIELDS = [
+    'county_name',
+    'county_code',
+    'college_code',
+    'college_id',
+    'party',
+    'candidate',
+    'votes',
+    'percent',
+]
 
 class Cache:
 
@@ -43,20 +59,20 @@ class VoteScraper:
 
     CHAMBERS_URL = 'aep_data.php?name=v1_parl_TipVoturi&parameter=248'
     COUNTIES_URL = ('aep_data.php?name=v1_parl_Judet_Lista&parameter=248'
-        '&parameter=5')
+        '&parameter={}')
     COLEGII_URL = ('aep_data.php?name=v1_parl_Colegii_Lista&parameter=248'
-        '&parameter={}&parameter=S')
+        '&parameter={}&parameter={}')
     RESULTS_URL = ('aep_data.php?name=v1_parl_Colegiu_Voturi&parameter=248'
-        '&parameter={}&parameter={}&parameter=S')
+        '&parameter={}&parameter={}&parameter={}')
 
     def __init__(self, client):
         self.client = client
 
-    def run_college(self, county_code, college):
+    def run_college(self, chamber, county_code, college):
         college_code = college['CodColegiu']
         college_id = college['Id']
         results_url = self.RESULTS_URL.format(
-            county_code, college_code)
+            county_code, college_code, chamber['code'])
         for result in self.client.get(results_url):
             yield {
                 'county_code': county_code,
@@ -68,34 +84,35 @@ class VoteScraper:
                 'percent': result['Procent'],
             }
 
-    def run_county(self, county):
+    def run_county(self, chamber, county):
         county_code = county['COD_JUD']
         county_name = county['DEN_JUD']
-        colegii_url = self.COLEGII_URL.format(county_code)
+        colegii_url = self.COLEGII_URL.format(county_code, chamber['code'])
         for college in self.client.get(colegii_url):
-            for row in self.run_college(county_code, college):
+            for row in self.run_college(chamber, county_code, college):
                 yield dict(row, county_name=county_name)
 
-    def run(self):
-        for chamber in self.client.get(self.CHAMBERS_URL):
-            for county in self.client.get(self.COUNTIES_URL):
-                yield from self.run_county(county)
+    def get_chambers(self):
+        return self.client.get(self.CHAMBERS_URL)
+
+    def run(self, chamber):
+        counties_url = self.COUNTIES_URL.format(chamber['id'])
+        for county in self.client.get(counties_url):
+            yield from self.run_county(chamber, county)
+
+def save(name, fields, rows):
+    OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    outfile = OUT_ROOT / '{}.csv'.format(name)
+    with outfile.open('wt', encoding='utf-8') as f:
+        out = csv.DictWriter(f, fields)
+        out.writeheader()
+        for row in rows:
+            out.writerow(row)
 
 def main():
-    fields = [
-        'county_name',
-        'county_code',
-        'college_code',
-        'college_id',
-        'party',
-        'candidate',
-        'votes',
-        'percent',
-    ]
-    out = csv.DictWriter(sys.stdout, fields)
-    out.writeheader()
-    for row in VoteScraper(Client()).run():
-        out.writerow(row)
+    scraper = VoteScraper(Client())
+    for chamber in CHAMBERS:
+        save(chamber['name'], CSV_FIELDS, scraper.run(chamber))
 
 if __name__ == '__main__':
     main()
