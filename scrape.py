@@ -60,18 +60,18 @@ class VoteScraper:
                     college = colegiu['CodColegiu']
                     results_url = self.RESULTS_URL.format(county_code, college)
                     for result in self.client.get(results_url):
-                        print({
+                        yield {
                             'county_code': county_code,
                             'college': college,
                             'party': result['DenumireScurta'],
                             'candidate': result['Candidat'],
                             'votes': result['Voturi'],
                             'percent': result['Procent'],
-                        })
-                        return
+                        }
 
 def main():
-    VoteScraper(Client()).run()
+    for row in VoteScraper(Client()).run():
+        print(row)
 
 if __name__ == '__main__':
     main()
