@@ -53,9 +53,8 @@ class VoteScraper:
         self.client = client
 
     def run(self):
-        counties = self.client.get(self.COUNTIES_URL)
         for chamber in self.client.get(self.CHAMBERS_URL):
-            for county in counties:
+            for county in self.client.get(self.COUNTIES_URL):
                 county_code = county['COD_JUD']
                 county_name = county['DEN_JUD']
                 colegii_url = self.COLEGII_URL.format(county_code)
