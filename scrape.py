@@ -44,6 +44,8 @@ class VoteScraper:
         '&parameter=5')
     COLEGII_URL = ('aep_data.php?name=v1_parl_Colegii_Lista&parameter=248'
         '&parameter={}&parameter=S')
+    RESULTS_URL = ('aep_data.php?name=v1_parl_Colegiu_Voturi&parameter=248'
+        '&parameter={}&parameter={}&parameter=S')
 
     def __init__(self, client):
         self.client = client
@@ -52,10 +54,21 @@ class VoteScraper:
         counties = self.client.get(self.COUNTIES_URL)
         for chamber in self.client.get(self.CHAMBERS_URL):
             for county in counties:
-                colegii_url = self.COLEGII_URL.format(county['COD_JUD'])
+                county_code = county['COD_JUD']
+                colegii_url = self.COLEGII_URL.format(county_code)
                 for colegiu in self.client.get(colegii_url):
-                    print(colegiu['CodColegiu'])
-                    return
+                    college = colegiu['CodColegiu']
+                    results_url = self.RESULTS_URL.format(county_code, college)
+                    for result in self.client.get(results_url):
+                        print({
+                            'county_code': county_code,
+                            'college': college,
+                            'party': result['DenumireScurta'],
+                            'candidate': result['Candidat'],
+                            'votes': result['Voturi'],
+                            'percent': result['Procent'],
+                        })
+                        return
 
 def main():
     VoteScraper(Client()).run()
