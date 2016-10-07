@@ -55,14 +55,18 @@ class VoteScraper:
         for chamber in self.client.get(self.CHAMBERS_URL):
             for county in counties:
                 county_code = county['COD_JUD']
+                county_name = county['DEN_JUD']
                 colegii_url = self.COLEGII_URL.format(county_code)
                 for college in self.client.get(colegii_url):
                     college_code = college['CodColegiu']
+                    college_id = college['Id']
                     results_url = self.RESULTS_URL.format(
                         county_code, college_code)
                     for result in self.client.get(results_url):
                         yield {
+                            'county_name': county_name,
                             'county_code': county_code,
+                            'college_id': college_id,
                             'college_code': college_code,
                             'party': result['DenumireScurta'],
                             'candidate': result['Candidat'],
