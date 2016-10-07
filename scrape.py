@@ -39,14 +39,23 @@ class Client:
 
 class VoteScraper:
 
+    CHAMBERS_URL = 'aep_data.php?name=v1_parl_TipVoturi&parameter=248'
+    COUNTIES_URL = ('aep_data.php?name=v1_parl_Judet_Lista&parameter=248'
+        '&parameter=5')
+    COLEGII_URL = ('aep_data.php?name=v1_parl_Colegii_Lista&parameter=248'
+        '&parameter={}&parameter=S')
+
     def __init__(self, client):
         self.client = client
 
     def run(self):
-        chambers_url = 'aep_data.php?name=v1_parl_TipVoturi&parameter=248'
-        for chamber in self.client.get(chambers_url):
-            print(chamber['Id'])
-            break
+        counties = self.client.get(self.COUNTIES_URL)
+        for chamber in self.client.get(self.CHAMBERS_URL):
+            for county in counties:
+                colegii_url = self.COLEGII_URL.format(county['COD_JUD'])
+                for colegiu in self.client.get(colegii_url):
+                    print(colegiu['CodColegiu'])
+                    return
 
 def main():
     VoteScraper(Client()).run()
