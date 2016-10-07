@@ -68,16 +68,15 @@ class VoteScraper:
     def __init__(self, client):
         self.client = client
 
-    def run_college(self, chamber, county_code, college):
-        college_code = college['CodColegiu']
-        college_id = college['Id']
+    def run_college(self, chamber, county, college):
         results_url = self.RESULTS_URL.format(
-            county_code, college_code, chamber['code'])
+            county['COD_JUD'], college['CodColegiu'], chamber['code'])
         for result in self.client.get(results_url):
             yield {
-                'county_code': county_code,
-                'college_id': college_id,
-                'college_code': college_code,
+                'county_name': county['DEN_JUD'],
+                'county_code': county['COD_JUD'],
+                'college_id': college['Id'],
+                'college_code': college['CodColegiu'],
                 'party': result['DenumireScurta'],
                 'candidate': result['Candidat'],
                 'votes': result['Voturi'],
@@ -85,12 +84,10 @@ class VoteScraper:
             }
 
     def run_county(self, chamber, county):
-        county_code = county['COD_JUD']
-        county_name = county['DEN_JUD']
-        colegii_url = self.COLEGII_URL.format(county_code, chamber['code'])
+        colegii_url = self.COLEGII_URL.format(
+            county['COD_JUD'], chamber['code'])
         for college in self.client.get(colegii_url):
-            for row in self.run_college(chamber, county_code, college):
-                yield dict(row, county_name=county_name)
+            yield from self.run_college(chamber, county, college)
 
     def get_chambers(self):
         return self.client.get(self.CHAMBERS_URL)
